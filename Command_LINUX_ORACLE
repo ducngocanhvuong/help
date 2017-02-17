@@ -1,0 +1,133 @@
+SSH:-------------------------------------------------------------------
+---Connect To Server	
+	SSH: ssh -p 2025 [root]@[220.231.118.136]
+	Password: [cntt@btp#HCM]
+	SSH: ssh [10.28.30.42]
+	Password: [tha.qlcv@web42] 
+
+---Transfer File:
+	SFTP: sftp [210.231.118.136]
+	Password: [cntt@btp#HCM]
+	Put: put [name file]  [context path] 
+	put cas_en_US.properties  home/qlqt/tomcat/tomcat-demo-61-8088-QLQTvBTP2015-Test 
+	put QLCB.war1  /home/qlcb/tomcat1101-7.0.61_qlcb/webapps 
+
+---Transfer File Port:
+	SFTP: scp -P 2025 [name file] [root@10.28.30.89]:[/home]
+	scp -P 2025 QLCB.zip root@10.28.30.89:/home
+	scp HDSD_QLCB.rar root@10.28.30.25:/home/qlcb/tomcat1101-7.0.61_qlcb/webapps/QLCB/share/huongdan
+	Password: stp.QLHTzZ@!2015
+
+---Zip:
+	zip -r [Name.zip] [Name]
+	unzip [Name]
+
+BUILD:-------------------------------------------------------------------
+	cd..
+	cd [Path]
+	../bin/shutdown.sh
+	../bin/startup.sh
+	./shutdown.sh
+	./startup.sh
+	Delete: rm -rf [Name]
+	Rename: mv [OldName] [NewName]
+	Move: mv [Name] [Path]
+	Ram: free -m
+	Capacity: df -h
+	Log: tailf ../logs/catanita.out
+	Tomcat: ps -ef grep|Tomcat
+	Kill Tomcat: kill -9 [ID]
+	Permission: 
+		chmod +x .sh
+		chmod -R 7777 *.sh
+		sudo [Command]
+	Check Connect To Port: netstat -an |grep :80 |wc -l
+
+ORACLE:-------------------------------------------------------------------
+
+	Connect Oracle : su - oracle
+
+	conn [User]
+	sqlplus /nolog
+
+	sqlplus / "as sysdba"               -- Login by DBA
+
+	startup                             -- Start Service
+	shutdown immediate                  -- Stop Service
+
+	create user HSCV_THA identified by HSCV_THA;
+	grant dba to HSCV_THA;
+	GRANT CONNECT TO VSA_VOFFICE_FULL;
+	GRANT RESOURCE TO VSA_VOFFICE_FULL;
+	grant create any table to VSA_VOFFICE_FULL;
+
+	CREATE DIRECTORY DMPDIR as '/u02/dmpdir'; --create directory for importdb/exportdb
+	  
+	select file_id,file_name from dba_data_files where tablespace_name='USERS';
+	alter [database] datafile 4 autoextend on maxsize unlimited;
+	alter [database] datafile '/u01/oradata/qlcb/users01.dbf' autoextend on next 5m maxsize 900m;
+
+	I.-----Import & Export-----
+	--Step 1: Connect Server DataBase by WinSCP or SSH
+	--Step 2: 
+		1. Login User Root
+		2. su - oracle
+	--Step 3:
+
+		1.DMPDP:
+		expdp HSCV_BTP_FINAL/HSCV_BTP_FINAL schemas=HSCV_BTP_FINAL directory=DMPDIR dumpfile=file.dmp logfile=export.log
+		impdp QLQT_REAL/QLQT_REAL  REMAP_SCHEMA=QLQT1:QLQT_REAL directory=DATA_PUMP_DIR dumpfile=QLQT.DMP logfile=impQLQT.log;
+
+		--Note:     + SELECT * FROM all_directories where directory_name like 'DATA_PUMP_DIR';
+					+ Remap_schemas: QLQT1 - User Export, QLQT_REAL - User Import
+					+ Export by DMDP To Import by DMDP
+					
+		Command export exclude: expdp SOTUPHAP_LLTP/SOTUPHAP_LLTP schemas=SOTUPHAP_LLTP EXCLUDE=TABLE:\"LIKE \'%ACTION_LOG%\'
+
+		2.DMP from Client:
+		imp [username/password][@database] file=[Path\tenfile.dmp] ;
+		exp [username/password][@database] file=[]Path\tenfile.dmp] ;
+
+	II.-----NOTE-----
+	-- Protocol adapter error: Restart service, Listener server DataBase (services.msc)
+
+	-- Delte limit password, Change password
+		SELECT profile FROM dba_users where username = 'QLQT';
+		ALTER PROFILE [DEFAULT] LIMIT FAILED_LOGIN_ATTEMPTS UNLIMITED PASSWORD_LIFE_TIME UNLIMITED;
+
+	--Import and Export other version, exclude data of a Table 
+		expdp SOTUPHAP_LLTP/SOTUPHAP_LLTP schemas=SOTUPHAP_LLTP EXCLUDE=TABLE:\"LIKE \'%ACTION_LOG%\'\" VERSION=10.2.0.4.0 directory=DATA_EXP dumpfile=QLLTP_OLD_2710.dmp logfile=QLLTP_OLD_2710.log
+
+	--Kill session
+		SELECT * FROM v$session where username =  'THA_DEMO';
+		ALTER SYSTEM KILL SESSION 'SID,SERIAL#' IMMEDIATE;
+		ALTER SYSTEM KILL SESSION '18,20254' IMMEDIATE;
+
+	-- Create Tablespace
+		create tablespace TASKMANAGER
+		logging
+		datafile 'TASKMANAGERAIC.dbf' 
+		size 512m -- Data Grown
+		autoextend on 
+		next 1024m maxsize 2048m -- Data Grown 2048m
+		extent management local;
+
+		ALTER TABLESPACE
+		   users
+		ADD DATAFILE
+		   '/u01/app/oracle/oradata/gpcntt/users01_add.dbf'
+		size 1024m;
+
+		ALTER TABLESPACE ILEGO_DATA DROP DATAFILE 'D:\oracle\oradata\btp\ILEGO_DATA_EXTENT.dbf';
+
+		ALTER TABLESPACE ILEGO_DATA 
+			ADD DATAFILE 'D:\oracle\oradata\btp\ILEGO_DATA_EXTENT.dbf'
+			SIZE 2048M
+			AUTOEXTEND ON
+			NEXT 512M
+			MAXSIZE 30000M;
+
+		SELECT * FROM V$tablespace;
+
+		ALTER DATABASE DATAFILE '/u01/app/oracle/oradata/gpcntt/users01_add.dbf'
+		AUTOEXTEND ON;
